@@ -1,4 +1,5 @@
 install.packages('bnlearn')
+library('bnlearn')
 e = empty.graph(LETTERS[1:6])
 e
 class(e)
@@ -7,7 +8,6 @@ arc.set = matrix(c("A", "C", "B", "F", "C", "F"),
                  ncol = 2, byrow = TRUE,
                  dimnames = list(NULL, c("from", "to")))
 arc.set
-arc(e) = arc.set
 arcs(e) = arc.set
 e
 bogus = matrix(c("X", "Y", "W", "Z"), 
@@ -28,3 +28,6 @@ e
 model2network("[A][C][B|A][D|C][F|A:B:D][E|F]")
 modelstring(e) = "[A][C][B|A][D|C][F|A:B:C][E|F]"
 e
+
+random.graph(LETTERS[1:6], prob=0.1)
+random.graph(LETTERS[1:6], num = 2, method='ic-dag')

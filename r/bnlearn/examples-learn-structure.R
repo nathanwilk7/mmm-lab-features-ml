@@ -1,0 +1,25 @@
+rm(list=ls())
+library(bnlearn)
+data(learning.test)
+pdag = iamb(learning.test)
+pdag
+score(set.arc(pdag, from='A', to='B'), learning.test)
+dag = set.arc(pdag, from='B', to='A')
+dag = pdag2dag(pdag, ordering = c("A", "B", "C", "D", "E", "F"))
+fit = bn.fit(dag, learning.test)
+fit
+fit$A
+bn.fit.barchart(fit$D)
+bn.fit.dotplot(fit$D)
+data(gaussian.test)
+pdag = iamb(gaussian.test)
+undirected.arcs(pdag)
+dag = set.arc(pdag, 'D', 'B')
+fit = bn.fit(dag, gaussian.test, method='bayes')
+fit
+coefficients(fit$F)
+str(residuals(fit$F))
+str(fitted(fit$F))
+str(fitted(fit))
+bn.fit.qqplot(fit)
+bn.fit.xyplot(fit)
