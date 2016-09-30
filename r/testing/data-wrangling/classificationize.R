@@ -1,0 +1,17 @@
+# 2-logistic-regression
+rm(list=ls())
+setwd('~/Documents/a-mmm-lab/a-ml/data')
+cdata = read.csv('5-crack-surface-normal.csv', header=T)
+cdata$dadN3Dline
+was.big = cdata$dadN3Dline > mean(cdata$dadN3Dline)
+plot(was.big)
+names(cdata)
+dim(cdata)
+summary(cdata)
+cor(cdata)
+plot(was.big, cdata$misorientation)
+plot(was.big, cdata$phi1)
+plot(cdata$phi1, cdata$dadN3Dline)
+glm.fit=glm(was.big~misorientation+phi1, data=cdata, family=binomial)
+summary(glm.fit)
+names(cdata)
