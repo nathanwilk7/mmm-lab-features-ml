@@ -46,27 +46,27 @@ test.cz = test$change_in_z
 
 library(e1071)
 
-tune.cost = function(train.output, train.input)
+tune.cost = function(train.output, train.input, my.gamma)
 {
   i = 1
   models <- vector(mode = "list", length = 7)
   for (cost.val in c(100,10,1,.01,.001,.0001,.00001))
   {
     models[[i]] <- svm(train.output~distance_to_grain_boundary+unit_vector_to_grain_boundary_x+unit_vector_to_grain_boundary_y+unit_vector_to_grain_boundary_z+phi1+phi2+misorientation+scaled_angle, data=train.input, kernel ="radial", cost=cost.val, 
-                       gamma=.01)
+                       gamma=my.gamma)
     i = i + 1
   }
   return(models)
 }
 
-tune.gamma = function(train.output, train.input)
+tune.gamma = function(train.output, train.input, my.cost)
 {
   i = 1
   models <- vector(mode = "list", length = 7)
   for (gamma.val in c(100,10,1,.01,.001,.0001,.00001))
   {
     models[[i]] <- svm(train.output~distance_to_grain_boundary+unit_vector_to_grain_boundary_x+unit_vector_to_grain_boundary_y+unit_vector_to_grain_boundary_z+phi1+phi2+misorientation+scaled_angle, data=train.input, kernel ="radial", 
-                       cost=1, gamma=gamma.val)
+                       cost=my.cost, gamma=gamma.val)
     i = i + 1
   }
   return(models)
@@ -74,7 +74,8 @@ tune.gamma = function(train.output, train.input)
 
 # dadN
 
-models.gamma.dadN = tune.gamma(train.dadN, train.input)
+my.cost = 3
+models.gamma.dadN = tune.gamma(train.dadN, train.input, my.cost)
 y.mean.dadN = mean(test$dadN)
 mean.error.dadN = sum((y.mean.dadN - test$dadN)^2) / nrow(test)
 test.errors.gamma.dadN = c(1,2,3,4,5,6,7)
@@ -94,7 +95,8 @@ for (i in 1:7)
 plot(test.errors.gamma.dadN, type='l')
 abline(h=mean.error.dadN, col='red', lwd=3)
 
-models.cost.dadN = tune.cost(train.dadN, train.input)
+my.gamma = .01
+models.cost.dadN = tune.cost(train.dadN, train.input, my.gamma)
 test.errors.cost.dadN = c(1,2,3,4,5,6,7)
 for (i in 1:7)
 {
