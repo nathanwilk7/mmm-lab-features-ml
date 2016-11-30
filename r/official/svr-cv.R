@@ -2,15 +2,20 @@
 
 rm(list=ls())
 setwd('~/Documents/a-mmm-lab/a-ml/data')
-data = read.csv('6-beta.csv', header=T)
+cdata = read.csv('10-distance-to-avg-distance.csv', header=T)
 
 # User parameters
 
 #set.seed(351734895)
 num.samples = 4000
 num.folds = 5
-costs = c(.0001, .001, .01, .1, 1, 10, 100, 1000)
-gammas = c(.0001, .001, .01, .1, 1, 10, 100, 1000)
+costs = c(.1, 1, 10)
+gammas = c(.0001, .001, .01)
+epsilons = c(.01, .1, 1)
+
+# costs = c(.0001, .001, .01, .1, 1, 10, 100, 1000)
+# gammas = c(.0001, .001, .01, .1, 1, 10, 100, 1000)
+# epsilons = c(.0001, .001, .01, .1, 1, 10, 100, 1000)
 
 # Calculated parameters
 
@@ -21,11 +26,11 @@ num.train.samples = num.samples - (num.test.samples + num.tune.samples)
 folds = 1:num.folds
 theta.interval = pi / num.folds
 
-num.models = length(costs) * length(gammas)
+num.models = length(costs) * length(gammas) * length(epsilons)
 
 # We don't want this column because it's not numeric
 
-data['on_crack_front'] = NULL
+cdata['on_crack_front'] = NULL
 
 # Scale function
 
@@ -54,6 +59,8 @@ library(e1071)
 cv.tune.mses <- vector(mode = "list", length = num.folds)
 cv.test.mses <- vector(mode = "list", length = num.folds)
 cv.best.index <- vector(mode = "list", length = num.folds)
+cv.test.preds <- vector(mode = "list", length = num.folds)
+cv.test.actuals <- vector(mode = "list", length = num.folds)
 
 # The Cross Validation Loop
 
@@ -64,19 +71,19 @@ for (fold in folds)
   # Calculate the beginning and end of the test section and get the test data
   test.theta.begin = fold * theta.interval - theta.interval
   test.theta.end = fold * theta.interval
-  test.data = data[data[,'theta'] > test.theta.begin & data[,'theta'] < test.theta.end,]
+  test.data = cdata[cdata[,'theta'] > test.theta.begin & cdata[,'theta'] < test.theta.end,]
   
   # Choose the tune section and get the tune data
   tune.section.id = sample(folds[-fold], 1)
   tune.theta.begin = tune.section.id * theta.interval - theta.interval
   tune.theta.end = tune.section.id * theta.interval
-  tune.data = data[data[,'theta'] > tune.theta.begin & data[,'theta'] < tune.theta.end,]
+  tune.data = cdata[cdata[,'theta'] > tune.theta.begin & cdata[,'theta'] < tune.theta.end,]
   
   # Get the train data, which is everything that's not test/tune
-  train.data = data[(data[,'theta'] < test.theta.begin & data[,'theta'] < tune.theta.begin |
-                    data[,'theta'] < test.theta.begin & data[,'theta'] > tune.theta.end |
-                    data[,'theta'] > test.theta.end & data[,'theta'] < tune.theta.begin |
-                    data[,'theta'] > test.theta.end & data[,'theta'] > tune.theta.end),]
+  train.data = cdata[(cdata[,'theta'] < test.theta.begin & cdata[,'theta'] < tune.theta.begin |
+                    cdata[,'theta'] < test.theta.begin & cdata[,'theta'] > tune.theta.end |
+                    cdata[,'theta'] > test.theta.end & cdata[,'theta'] < tune.theta.begin |
+                    cdata[,'theta'] > test.theta.end & cdata[,'theta'] > tune.theta.end),]
   
   # Sample from the data
   test.samples = test.data[sample(nrow(test.data), num.test.samples), ]
@@ -90,24 +97,29 @@ for (fold in folds)
   
   # Set up the training data
   train.input = data.frame(train.samples.scaled$distance_to_grain_boundary, train.samples.scaled$unit_vector_to_grain_boundary_x, train.samples.scaled$unit_vector_to_grain_boundary_y, train.samples.scaled$unit_vector_to_grain_boundary_z, 
-                           train.samples.scaled$phi1, train.samples.scaled$Phi, train.samples.scaled$phi2, train.samples.scaled$misorientation, train.samples.scaled$scaled_angle)
-  colnames(train.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle')
+                           train.samples.scaled$phi1, train.samples.scaled$Phi, train.samples.scaled$phi2, train.samples.scaled$misorientation, train.samples.scaled$scaled_angle, train.samples.scaled$previous_dadN, train.samples.scaled$curvature_distance, 
+                           train.samples.scaled$distance_to_avg_distance)
+  colnames(train.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle', 'previous_dadN', 'curvature_distance', 'distance_to_avg_distance')
   train.dadN = train.samples.scaled$dadN
   train.beta = train.samples.scaled$beta
   train.cz = train.samples.scaled$change_in_z
   
   # Set up the tuning data
   tune.input = data.frame(tune.samples.scaled$distance_to_grain_boundary, tune.samples.scaled$unit_vector_to_grain_boundary_x, tune.samples.scaled$unit_vector_to_grain_boundary_y, tune.samples.scaled$unit_vector_to_grain_boundary_z, 
-                          tune.samples.scaled$phi1, tune.samples.scaled$Phi, tune.samples.scaled$phi2, tune.samples.scaled$misorientation, tune.samples.scaled$scaled_angle)
-  colnames(tune.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle')
+                          tune.samples.scaled$phi1, tune.samples.scaled$Phi, tune.samples.scaled$phi2, tune.samples.scaled$misorientation, tune.samples.scaled$scaled_angle, tune.samples.scaled$previous_dadN, tune.samples.scaled$curvature_distance, 
+                          tune.samples.scaled$distance_to_avg_distance)
+  colnames(tune.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle', 'previous_dadN', 
+                           'curvature_distance', 'distance_to_avg_distance')
   tune.dadN = tune.samples.scaled$dadN
   tune.beta = tune.samples.scaled$beta
   tune.cz = tune.samples.scaled$change_in_z
   
   # Set up the testing data
   test.input = data.frame(test.samples.scaled$distance_to_grain_boundary, test.samples.scaled$unit_vector_to_grain_boundary_x, test.samples.scaled$unit_vector_to_grain_boundary_y, test.samples.scaled$unit_vector_to_grain_boundary_z, 
-                          test.samples.scaled$phi1, test.samples.scaled$Phi, test.samples.scaled$phi2, test.samples.scaled$misorientation, test.samples.scaled$scaled_angle)
-  colnames(test.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle')
+                          test.samples.scaled$phi1, test.samples.scaled$Phi, test.samples.scaled$phi2, test.samples.scaled$misorientation, test.samples.scaled$scaled_angle, test.samples.scaled$previous_dadN, 
+                          test.samples.scaled$curvature_distance, test.samples.scaled$distance_to_avg_distance)
+  colnames(test.input) = c('distance_to_grain_boundary', 'unit_vector_to_grain_boundary_x', 'unit_vector_to_grain_boundary_y', 'unit_vector_to_grain_boundary_z', 'phi1', 'Phi', 'phi2', 'misorientation', 'scaled_angle', 'previous_dadN', 
+                           'curvature_distance', 'distance_to_avg_distance')
   test.dadN = test.samples.scaled$dadN
   test.beta = test.samples.scaled$beta
   test.cz = test.samples.scaled$change_in_z
@@ -120,10 +132,14 @@ for (fold in folds)
   {
     for (my.gamma in gammas)
     {
-      model <- svm(train.dadN~distance_to_grain_boundary+unit_vector_to_grain_boundary_x+unit_vector_to_grain_boundary_y+unit_vector_to_grain_boundary_z+phi1+phi2+misorientation+scaled_angle, data=train.input, kernel ="radial", 
-                   cost=my.cost, gamma=my.gamma)
-      models[[i]] = model
-      i = i + 1
+      for (my.epsilon in epsilons)
+      {
+        model <- svm(train.dadN~distance_to_grain_boundary+unit_vector_to_grain_boundary_x+unit_vector_to_grain_boundary_y+unit_vector_to_grain_boundary_z+
+                       phi1+phi2+misorientation+scaled_angle+previous_dadN+curvature_distance+distance_to_avg_distance, data=train.input, kernel ="radial", 
+                     cost=my.cost, gamma=my.gamma, epsilon=my.epsilon)
+        models[[i]] = model
+        i = i + 1
+      }
     }
   }
   
@@ -153,10 +169,13 @@ for (fold in folds)
   # Save the best error and index of parameters
   cv.tune.mses[fold] = minimum.tune.mse
   cv.best.index[fold] = minimum.index
+  #cv.to.plot[[fold]] = matrix(tune.mse.dadN, nrow=length(gammas), ncol=length(costs))
   
   test.pred.dadN = predict(models[[minimum.index]], test.input)
+  cv.test.preds[[fold]] = test.pred.dadN
   test.mse.dadN = sum((test.pred.dadN - test.dadN)^2) / length(test.dadN)
   cv.test.mses[fold] = test.mse.dadN
+  cv.test.actuals[[fold]] = test.dadN
 }
 
 # Print Test MSEs
@@ -171,7 +190,28 @@ print(result)
 
 # Print all Test MSE
 
-# for (i in 1:length(cv.test.mses))
-# {
-#   print(cv.test.mses[[i]])
-# }
+for (i in 1:length(cv.test.mses))
+{
+  print(cv.test.mses[[i]])
+}
+
+# Print avg r^2
+avg.r2 = 0
+for (i in 1:length(cv.test.preds))
+{
+  lm = lm(cv.test.preds[[i]]~cv.test.actuals[[i]])
+  avg.r2 = avg.r2 + summary(lm)$adj.r.squared
+}
+print(avg.r2 / length(cv.test.preds))
+
+# Plot actual vs predictions
+
+fold.num = 4
+plot(cv.test.actuals[[fold.num]], cv.test.preds[[fold.num]])
+lm = lm(cv.test.preds[[fold.num]]~cv.test.actuals[[fold.num]])
+summary(lm)
+
+#library(lattice)
+
+#sqrt(unlist(cv.test.mses))
+#levelplot(cv.to.plot[[5]], at=c(.85,.9,.95,1,1.05,1.1), xlab='Gammas', ylab='Costs')
